@@ -80,7 +80,7 @@ REPO=$(echo "$OWNER_REPO"  | cut -d'/' -f2)
 
 TITLE_RAW=$(git log "origin/$FB" -1 --pretty=format:"%s")
 STORY_TITLE=$(echo "$TITLE_RAW" | grep -oE '【.*' | sed -E 's|https?://[^ ]+||g' | xargs)
-TAPD_INFO=$(git log "origin/$FB" --pretty=format:"%s" -10 | grep -oE '\-\-story=.*' || true)
+TAPD_INFO=$(git log "origin/$FB" --pretty=format:"%s" -10 | grep -oE '\-\-story=.*' | head -1 || true)
 COMMIT_LOG=$(git log "origin/test..origin/$FB" --oneline || true)
 DIFF_STAT=$(git diff "origin/test...origin/$FB" --stat || true)
 

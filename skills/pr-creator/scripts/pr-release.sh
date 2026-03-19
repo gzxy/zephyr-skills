@@ -43,7 +43,7 @@ SID=$(echo "$COMMITS" | grep -oE '\-\-story=[0-9]+' | head -1 | sed 's/--story=/
 DATE=$(date +%Y%m%d)
 RB="release/${USER_NAME}/${DATE}/${SID}"
 TRB="tmp_release/${USER_NAME}/${DATE}/${SID}"
-TAPD_INFO=$(echo "$COMMITS" | grep -oE '\-\-story=.*' || true)
+TAPD_INFO=$(echo "$COMMITS" | grep -oE '\-\-story=.*' | head -1 || true)
 
 info "Story ID:        $SID"
 info "Release branch:  $RB"
