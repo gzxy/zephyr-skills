@@ -1,5 +1,5 @@
 ---
-name: pr-skill
+name: pr-creator
 description: >
   Cursor Skill：PR 自动化流程助手。识别关键词「转测」「提测」「submit test」「提单」「上线」「发布」「create release」时触发。
   自动执行 git 操作（分支校验、合并、推送），收集提交信息，填充 PR 模板，并打开 GitHub PR 创建页面供用户手动提交。
@@ -21,8 +21,8 @@ compatibility: Requires git, gh (GitHub CLI). Designed for Cursor Agent.
 
 ```bash
 # ⚠️ 必须使用 required_permissions: ["all"]
-source ~/.zshrc && bash .cursor/skills/pr-skill/scripts/pr-test.sh      # 转测
-source ~/.zshrc && bash .cursor/skills/pr-skill/scripts/pr-release.sh   # 提单
+source ~/.zshrc && bash .cursor/skills/pr-creator/scripts/pr-test.sh      # 转测
+source ~/.zshrc && bash .cursor/skills/pr-creator/scripts/pr-release.sh   # 提单
 ```
 
 - 脚本自动完成：环境检查 → 分支校验 → fetch → 合并 → 推送 → 收集数据
@@ -69,3 +69,7 @@ exec(`open ${tmpFile}`, () => setTimeout(() => fs.unlinkSync(tmpFile), 3000));
 **禁止删除分支！** Agent 不得执行任何删除本地或远程分支的 git 命令（如 `git branch -d`、`git branch -D`、`git push origin --delete` 等）。
 
 **禁止回退代码！** Agent 不得执行任何回退/撤销提交的 git 命令（如 `git reset`、`git revert`、`git restore`、`git checkout -- .` 等会丢失或覆盖代码的操作）。
+
+**禁止使用变基** Agent 不得执行 git rebase 处理分支代码
+
+**冲突提醒** Agent 在处理分支时遇到冲突, 不要尝试自己解决, 一定要提示用户手动处理
