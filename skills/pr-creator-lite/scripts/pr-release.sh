@@ -35,15 +35,24 @@ USER_NAME=$(echo "$FB" | cut -d'/' -f2)
 info "Feature branch: $FB"
 
 # ── 2. 获取需求 ID ──────────────────────────────────────────────────────────
-COMMITS=$(git log "origin/$FB" --pretty=format:"%s" -10)
-SID=$(echo "$COMMITS" | grep -oE '\-\-story=[0-9]+' | head -1 | sed 's/--story=//' || true)
+SID=$(echo "$FB" | rev | cut -d'/' -f1 | rev | grep -oE '^[0-9]+')
 [[ -n "$SID" ]] \
-  || die "No --story=<id> found in recent commits. Cannot create release branch."
+  || die "Cannot extract numeric SID from branch '$FB'. Last segment must start with digits, e.g. feature/{user}/{scope}/{SID} or feature/{user}/{scope}/{SID}--suffix"
 
 DATE=$(date +%Y%m%d)
 RB="release/${USER_NAME}/${DATE}/${SID}"
 TRB="tmp_release/${USER_NAME}/${DATE}/${SID}"
-TAPD_INFO=$(echo "$COMMITS" | grep -oE '\-\-story=.*' | head -1 || true)
+TAPD_INFO="--story=$SID"
+
+# 按 SID 查找远程已有 release 分支（跨日期复用）
+EXISTING_RB=$(git ls-remote --heads origin "refs/heads/release/${USER_NAME}/*/${SID}" \
+  | awk '{print $2}' | sed 's|refs/heads/||' | head -1)
+if [[ -n "$EXISTING_RB" ]]; then
+  EXISTING_DATE=$(echo "$EXISTING_RB" | cut -d'/' -f3)
+  RB="$EXISTING_RB"
+  TRB="tmp_release/${USER_NAME}/${EXISTING_DATE}/${SID}"
+  info "Found existing release branch (reusing): $RB"
+fi
 
 info "Story ID:        $SID"
 info "Release branch:  $RB"
@@ -87,9 +96,17 @@ git push origin "$RB"
 if git show-ref --verify --quiet "refs/heads/$TRB"; then
   info "Checkout existing local branch $TRB"
   git checkout "$TRB"
+  info "Merging latest origin/pre_release into $TRB..."
+  if ! git merge origin/pre_release --no-edit; then
+    die "Merge conflict while syncing pre_release into $TRB! Resolve, then re-run this script."
+  fi
 elif [[ -n "$(git ls-remote --heads origin "$TRB")" ]]; then
   info "Checkout remote branch $TRB"
   git checkout -b "$TRB" "origin/$TRB"
+  info "Merging latest origin/pre_release into $TRB..."
+  if ! git merge origin/pre_release --no-edit; then
+    die "Merge conflict while syncing pre_release into $TRB! Resolve, then re-run this script."
+  fi
 else
   info "Creating $TRB from pre_release"
   git checkout pre_release

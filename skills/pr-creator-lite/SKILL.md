@@ -1,5 +1,5 @@
 ---
-name: pr-creator
+name: pr-creator-lite
 description: >
   Cursor Skill：PR 自动化流程助手。识别关键词「转测」「提测」「submit test」「提单」「上线」「发布」「create release」时触发。
   自动执行 git 操作（分支校验、合并、推送），收集提交信息，填充 PR 模板，并打开 GitHub PR 创建页面供用户手动提交。
@@ -12,17 +12,17 @@ compatibility: Requires git, gh (GitHub CLI). Designed for Cursor Agent.
 
 ## 意图识别
 
-| 关键词 | 脚本 |
-|--------|------|
-| 转测 / 提测 / submit test | `scripts/pr-test.sh` |
+| 关键词                              | 脚本                    |
+| ----------------------------------- | ----------------------- |
+| 转测 / 提测 / submit test           | `scripts/pr-test.sh`    |
 | 提单 / 上线 / 发布 / create release | `scripts/pr-release.sh` |
 
 ## 步骤 1 — 运行脚本
 
 ```bash
 # ⚠️ 必须使用 required_permissions: ["all"]
-source ~/.zshrc && bash .cursor/skills/pr-creator/scripts/pr-test.sh      # 转测
-source ~/.zshrc && bash .cursor/skills/pr-creator/scripts/pr-release.sh   # 提单
+source ~/.zshrc && bash .cursor/skills/pr-creator-lite/scripts/pr-test.sh      # 转测
+source ~/.zshrc && bash .cursor/skills/pr-creator-lite/scripts/pr-release.sh   # 提单
 ```
 
 - 脚本自动完成：环境检查 → 分支校验 → fetch → 合并 → 推送 → 收集数据
@@ -34,33 +34,46 @@ source ~/.zshrc && bash .cursor/skills/pr-creator/scripts/pr-release.sh   # 提�
 从脚本输出提取信息，生成：
 
 **Title**：
+
 - 转测 → `【测试】{STORY_TITLE}`，并严格按照此格式
 - 提单 → `【预发布】{STORY_TITLE}`，并严格按照此格式
 - `STORY_TITLE` 由脚本直接提供，直接使用。若为空则使用 `TITLE_RAW`
 
-**Body**（按 `.github/PULL_REQUEST_TEMPLATE.md` 填充）：
-- 「变更说明」→ 在该章节下以追加的方式填入 TAPD_INFO，注意此文本不要使用以 `>` 开头的引用
-- 「描述」→ 基于脚本输出的 `COMMIT_LOG`（提交列表）和 `DIFF_STAT`（文件变更统计），提炼 3-5 条简洁的代码变更描述，以无序列表（`-`）形式填入，注意此文本不要使用以 `>` 开头的引用
-- **其他所有章节（示例、如何进行测试、影响、清单）保持模板默认占位文字，不做任何修改**
+**Body**（严格按照 `references/pr-template.md` 的结构填充，**删除所有以 `>` 开头的占位引用行**）：
 
-## 步骤 3 — 打开 PR 页面
+- `# 变更说明` → 删除 `>` 占位行，填入 TAPD_INFO
+- `# 描述` → 删除 `>` 占位行，留空，由用户自行填写
+- `# 清单` → 保持模板原始内容，不做任何修改
 
-⚠️ **必须使用 `required_permissions: ["all"]`**，title 和 body 必须使用 `encodeURIComponent`（或等效方式）进行 URL 编码**，然后通过写入**临时 HTML 文件**来打开（避免超长 URL 作为 shell 参数传递时失败）：
+## 步骤 3 — 生成 PR 链接
+
+使用 Python 对 title 和 body 进行 URL 编码，构造 compare URL，然后**在对话框中以 Markdown 链接形式输出**，供用户直接点击：
 
 ```
 https://github.com/{OWNER}/{REPO}/compare/{BASE_BRANCH}...{TARGET_BRANCH}?quick_pull=1&title={encoded_title}&body={encoded_body}
 ```
 
-**打开方式（Node.js）**：
-```js
-const fs = require("fs");
-const { exec } = require("child_process");
-const tmpFile = `/tmp/pr_open_${Date.now()}.html`;
-fs.writeFileSync(tmpFile, `<script>location.href=${JSON.stringify(url)}</script>`);
-exec(`open ${tmpFile}`, () => setTimeout(() => fs.unlinkSync(tmpFile), 3000));
+**生成方式（Python）**：
+
+```bash
+python3 - <<'EOF'
+from urllib.parse import quote
+title = """<TITLE>"""
+body = """<BODY>"""
+encoded_title = quote(title, safe='')
+encoded_body = quote(body, safe='')
+url = f"https://github.com/{OWNER}/{REPO}/compare/{BASE_BRANCH}...{TARGET_BRANCH}?quick_pull=1&title={encoded_title}&body={encoded_body}"
+print(url)
+EOF
 ```
 
-整个流程完成后，必须清理临时文件，不能残留文件到用户工作区。如有 TAPD 信息缺失，一并提醒。
+拿到 URL 后，在对话框中输出：
+
+```
+[点击创建 PR](构造好的完整 URL)
+```
+
+流程完成后，如有 TAPD 信息缺失，一并提醒。
 
 ## ⚠️ 特别注意
 

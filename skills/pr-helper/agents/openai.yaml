@@ -1,0 +1,6 @@
+interface:
+  display_name: "PR 助手"
+  short_description: "审查代码、准备可续跑的交付 PR，并分析 Cursor Bot 评论"
+  default_prompt: "使用 $pr-helper 审查当前改动或准备一个交付 PR。"
+policy:
+  allow_implicit_invocation: false

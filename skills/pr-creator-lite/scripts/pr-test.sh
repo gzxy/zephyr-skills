@@ -53,9 +53,17 @@ git fetch origin
 if git show-ref --verify --quiet "refs/heads/$TB"; then
   info "Checkout existing local branch $TB"
   git checkout "$TB"
+  info "Merging latest origin/test into $TB..."
+  if ! git merge origin/test --no-edit; then
+    die "Merge conflict while syncing test into $TB! Resolve, then re-run this script."
+  fi
 elif [[ -n "$(git ls-remote --heads origin "$TB")" ]]; then
   info "Checkout remote branch $TB"
   git checkout -b "$TB" "origin/$TB"
+  info "Merging latest origin/test into $TB..."
+  if ! git merge origin/test --no-edit; then
+    die "Merge conflict while syncing test into $TB! Resolve, then re-run this script."
+  fi
 else
   info "Creating $TB from test"
   git checkout test
